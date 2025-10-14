@@ -128,8 +128,6 @@ def prep_output_file(
         encoding={
             "spv_cf": {
                 "zlib": True,
-                "dtype": "float32",
-                "_FillValue": None,
                 "least_significant_digit": 3,
             }
         },
