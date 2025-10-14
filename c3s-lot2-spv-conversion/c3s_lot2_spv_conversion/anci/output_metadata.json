@@ -1,0 +1,19 @@
+{
+    "Title": "C3S-Energy solar PV power capacity factor, based on SSRD and T2M interpolated on a 0.25\u00b0 lon/lat grid",
+    "Calculation_Method": "see https://doi.org/10.5194/asr-15-51-2018",
+    "Method_Name": "PhM03",
+    "Method_Reference": "D426Lot1.WEMC.2.1.2 - Technical description of methodologies followed in the development of each product",
+    "Contract": "Official reference number service contract: xxxxxxx",
+    "Data_Management_Plan": "C3S_426_Lot1.3.1.1_201807_First_Version_Data_Management_Plan_v3",
+    "Keywords": "C3S, ECMWF, Copernicus Climate Change Service, Energy indicators",
+    "Creation_date": "TBD",
+    "Contact": "http://copernicus-support.ecmwf.int/",
+    "Institution": "European Center for Medium-Range Weather Forecasts (ECMWF), Reading, United Kingdom",
+    "Forecast_type": "TBD",
+    "ClimateData": "TBD",
+    "Frequency": "1h",
+    "Resolution": "0.25 deg",
+    "Point_of_contact": "Yves-Marie Saint-Drenan, MinesParis-PSL University/Armines, yves-marie.saint-drenan@minesparis.psl.eu",
+    "Intellectual_Property": "The IP of these data belongs to the EU Copernicus programme",
+    "Citation": "Generated using Copernicus Climate Change Service information [2019], under the Copernicus License Agreement"
+}
