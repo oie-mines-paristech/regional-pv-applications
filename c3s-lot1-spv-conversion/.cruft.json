@@ -1,0 +1,20 @@
+{
+  "template": "https://github.com/ecmwf-projects/cookiecutter-conda-package",
+  "commit": "ff19a1dc1b3e9f4ba2544423b3a6bb510f81f352",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "project_name": "c3s-lot1-spv-conversion",
+      "project_slug": "c3s_lot1_spv_conversion",
+      "project_short_description": "Code to produce solar photovoltaic capacity factors for C3S Energy.",
+      "copyright_holder": "ARMINES",
+      "copyright_year": "2025",
+      "mypy_strict": false,
+      "integration_tests": false,
+      "pypi": true,
+      "_template": "https://github.com/ecmwf-projects/cookiecutter-conda-package",
+      "_commit": "ff19a1dc1b3e9f4ba2544423b3a6bb510f81f352"
+    }
+  },
+  "directory": null
+}
