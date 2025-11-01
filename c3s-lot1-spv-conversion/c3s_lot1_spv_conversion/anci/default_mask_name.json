@@ -1,3 +1,5 @@
 {
-    "excl_mask": "H_PVma_InCS_Armi_---_0000m_Glob_025d_S202211120000_E202211120000_INV_MAP_NA-_NA-_NA-_NA-_NA_NA---_NA---_MT00-.nc"
+    "excl_mask_path_HIST": "ANCI_SPVL-mask_C3S2LOT1_025d_v1.00.nc",
+    "excl_mask_path_PROJ": "ANCI_SPVL-mask_C3S2LOT1_025d_v1.00.nc",
+    "excl_mask_path_SEAS": "ANCI_SPVL-mask_C3S2LOT1_100d_v1.00.nc"
 }
