@@ -5,7 +5,6 @@ import numpy as np
 from regional_pv.core import spv_workflow
 
 from c3s_lot2_spv_conversion.utils.read_functions import (
-    get_demo_paths,
     read_support_inputs,
     read_weather_inputs,
 )
@@ -112,7 +111,7 @@ def compute_spv(
     pv_typology: str,
     in_ssrd_path: str,
     in_t2m_path: str,
-    in_excl_mask_path: str,
+    in_excl_mask_path: Optional[str],
     DataStream: str,
     dt_orig: int = 60,
     dt_downscale: int = 15,
@@ -182,18 +181,17 @@ def compute_spv(
 
     test_input_paths(in_ssrd_path, in_t2m_path)
 
-    # checks out_path if to_save is True
+    # if outputs are to be saved, checks path provided
     if to_save:
-        if isinstance(out_path, str):
-            msg = "out_path does not point to a .nc file"
-            assert out_path.endswith(".nc"), msg
+        msg = "out_path variable must be str"
+        assert isinstance(out_path, str), msg
 
-            msg = "out_path points to a non-existing directory"
-            directory = path.dirname(out_path)
-            assert path.exists(directory), msg
-        else:
-            msg = "out_path variable must be str"
-            assert isinstance(out_path, str), msg
+        msg = "out_path does not point to a .nc file"
+        assert out_path.endswith(".nc"), msg
+
+        msg = "out_path points to a non-existing directory"
+        directory = path.dirname(out_path)
+        assert path.exists(directory), msg
 
     # needs this renaming since a parameter cannot be a global variable
     n_p = n_procs
@@ -227,12 +225,6 @@ def compute_spv(
     else:
         pv_type = pv_typology
 
-    if demo_mode == 1:
-        print("""Caution: demo_mode=1 ignores values provided in in_ssrd_list,
-            in_t2m_list, and out_path""")
-
-        in_ssrd_list, in_t2m_list, out_path = get_demo_paths()
-
     # reads weather data, namely ssrd and t2m
     # meta variables are extracted from ssrd (vLat,vLon,time)
     SSRD, T2M, meta = read_weather_inputs(in_ssrd_path, in_t2m_path)
@@ -248,8 +240,11 @@ def compute_spv(
 
     # ID indices where it is useful to calculate SPV, in 1d format
     # (i.e. skips nighttime period and excluded areas)
-    ok_index = (excl_mask == 0) & (SSRD.sum(axis=0) > 0)
-    ok_index = np.ravel_multi_index(np.where(ok_index), excl_mask.shape)
+    if excl_mask:  # if an exclusion mask is provided
+        ok_index = (excl_mask == 0) & (SSRD.sum(axis=0) > 0)
+    else:
+        ok_index = SSRD.sum(axis=0) > 0
+    ok_index = np.ravel_multi_index(np.where(ok_index), SSRD.shape)
 
     # array where to store spv output
     out_all = np.zeros_like(SSRD)
@@ -288,9 +283,9 @@ def compute_spv(
     # meshgrid, can be useful for plotting
     XX, YY = np.meshgrid(meta["vLon"], meta["vLat"])
 
-    # creates and encodes output .nc file
     if to_save:
         if isinstance(out_path, str):
+            # creates and encodes output .nc file
             prep_output_file(
                 out_path,
                 DataStream,

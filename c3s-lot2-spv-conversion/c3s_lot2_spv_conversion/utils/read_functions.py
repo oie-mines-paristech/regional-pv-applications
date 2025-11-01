@@ -6,24 +6,6 @@ import numpy as np
 import xarray as xr
 
 
-def get_demo_paths() -> Tuple[str, str, str]:
-    """
-    Get paths for demo files contained in the package directory.
-
-    Returns
-    -------
-    Tuple[list, list,str]
-        List of ssrd and t2m demos files, and spv output path.
-
-    """
-    script_path = path.dirname(path.abspath(__file__))
-    ssrd_dir = path.join(path.split(script_path)[0], "demo_data", "ssrd")
-    t2m_dir = path.join(path.split(script_path)[0], "demo_data", "t2m")
-    out_dir = path.join(path.split(script_path)[0], "demo_data", "spv")
-
-    return ssrd_dir, t2m_dir, out_dir
-
-
 def read_support_inputs(
     pv_type: str,
     meta: dict,
@@ -34,7 +16,7 @@ def read_support_inputs(
     Optional[np.ndarray],
     Optional[np.ndarray],
     float,
-    np.ndarray,
+    Optional[np.ndarray],
 ]:
     """
     Read support inputs from auxiliary files.
@@ -71,7 +53,7 @@ def read_support_inputs(
     if in_exclMask_path:
         excl_mask = read_exclusMask(meta, in_exclMask_path)
     else:
-        excl_mask = np.zeros(ref_shape[1:])
+        excl_mask = None
 
     return pv_tilt, pv_azim, w, k, excl_mask
 
@@ -105,39 +87,26 @@ def read_POA_params(
         Weights for combining multiple module orientations.
         None if single orientation or tracking typology.
     """
-    if pv_type in ["rooftop_residential", "utility_fix"]:
+    if pv_type != "utility_track_1axis":
         script_dir = path.dirname(path.abspath(__file__))
         file_dir = path.split(script_dir)[0]
         file = "C3S_PECD_PVprm_v4.nc"
         with xr.open_dataset(path.join(file_dir, "anci", file)) as nc_data:
-            # compares borders of grids (if weather data is subset,
-            # exclusion mask needs to be subset)
-            a = nc_data["longitude"].values.min() - meta["vLon"].min()
-            b = nc_data["longitude"].values.max() - meta["vLon"].max()
-            c = nc_data["latitude"].values.min() - meta["vLat"].min()
-            d = nc_data["latitude"].values.max() - meta["vLat"].max()
+            if pv_type == "rooftop_residential":
+                pv_azim = nc_data["pv_azim"][:].data
+                pv_tilt = nc_data["pv_ResiTilt"][:].data
+                w_orient = None
 
-            if abs(a) + abs(b) + abs(c) + abs(d) > 0:
-                lon_slice = slice(meta["vLon"].min(), meta["vLon"].max())
-                lat_slice = slice(meta["vLat"].max(), meta["vLat"].min())
-                nc_data = nc_data.sel(longitude=lon_slice, latitude=lat_slice)
+            elif pv_type == "rooftop_industrial":
+                pv_azim = np.array([180, 90, 270])
+                pv_tilt = np.array([10, 10, 10])
+                w_orient = np.array([0.5, 0.25, 0.25])
 
-    if pv_type == "rooftop_residential":
-        pv_azim = nc_data["pv_azim"][:].data
-        pv_tilt = nc_data["pv_ResiTilt"][:].data
-        w_orient = None
-
-    elif pv_type == "rooftop_industrial":
-        pv_azim = np.array([180, 90, 270])
-        pv_tilt = np.array([10, 10, 10])
-        w_orient = np.array([0.5, 0.25, 0.25])
-
-    elif pv_type == "utility_fix":
-        pv_tilt = nc_data["pv_OptTilt"][:].data * 0.75
-        pv_azim = nc_data["pv_azim"][:].data
-        w_orient = None
-
-    elif pv_type == "utility_track_1axis":
+            elif pv_type == "utility_fix":
+                pv_azim = nc_data["pv_azim"][:].data
+                pv_tilt = nc_data["pv_OptTilt"][:].data * 0.75
+                w_orient = None
+    else:
         pv_azim = None
         pv_tilt = None
         w_orient = None
@@ -211,10 +180,6 @@ def read_exclusMask(
         in_exclMask_path = path.join(file_dir, "anci", file)
 
     with xr.open_dataset(in_exclMask_path) as nc_data:
-        lon_slice = slice(meta["vLon"].min(), meta["vLon"].max())
-        lat_slice = slice(meta["vLat"].max(), meta["vLat"].min())
-
-        nc_data = nc_data.sel(longitude=lon_slice, latitude=lat_slice)
         exclus_mask = nc_data[prm_excl].values
 
     return exclus_mask
