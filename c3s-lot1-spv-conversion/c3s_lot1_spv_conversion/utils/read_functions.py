@@ -6,37 +6,16 @@ import numpy as np
 import xarray as xr
 
 
-def get_demo_paths() -> Tuple[str, str, str]:
-    """
-    Get paths for demo files contained in the package directory.
-
-    Returns
-    -------
-    Tuple[list, list,str]
-        List of ssrd and t2m demos files, and spv output path.
-
-    """
-    script_path = path.dirname(path.abspath(__file__))
-    ssrd_dir = path.join(path.split(script_path)[0], "demo_data", "ssrd")
-    t2m_dir = path.join(path.split(script_path)[0], "demo_data", "t2m")
-    out_dir = path.join(path.split(script_path)[0], "demo_data", "spv")
-
-    return ssrd_dir, t2m_dir, out_dir
-
-
 def read_support_inputs(
-    meta: dict,
     ref_shape: tuple,
     in_exclMask_path: Optional[str] = "default",
     pv_params: Optional[dict] = None,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
     """
     Read support inputs from auxiliary files.
 
     Parameters
     ----------
-    meta: dict
-        Describes lat/lon borders of weather data.
     ref_shape: np.ndarray
         Shape of weather data, to check for consistency.
     in_exclMask_path : str
@@ -54,36 +33,33 @@ def read_support_inputs(
         Exclusion mask, IDing pixels to be ignored during calculations.
         None corresponds to assuming all pixels.
     """
-    if pv_params is None:  # if pv_params is not provided
-        pv_tilt, pv_azim = read_POA_params(meta)
-    elif pv_params is not None:  # if pv_params is provided
-        keys = pv_params.keys()
-        if ("azim" not in keys) & ("tilt" not in keys):
-            pv_tilt, pv_azim = read_POA_params(meta)
-        elif ("azim" in keys) & ("tilt" in keys):
-            pv_tilt = pv_params["tilt"]
-            pv_azim = pv_params["azim"]
-        elif "azim" in keys:
-            # reads module tilt/azimuth parameters used for regional PV modelling
-            pv_tilt, _ = read_POA_params(meta)
-            pv_azim = pv_params["azim"]
-        elif "tilt" in keys:
-            pv_tilt = pv_params["tilt"]
-            # reads module tilt/azimuth parameters used for regional PV modelling
-            _, pv_azim = read_POA_params(meta)
+    # if neither module tilt nor azimuth are user-defined
+    if (pv_params is None) or (not {"tilt", "azim"}.issubset(pv_params)):
+        pv_tilt, pv_azim = read_POA_params()
+    elif {"tilt", "azim"}.issubset(pv_params):  # if both are provided
+        pv_tilt = pv_params["tilt"]
+        pv_azim = pv_params["azim"]
+    elif "azim" in pv_params:
+        # default module tilt
+        pv_tilt, _ = read_POA_params()
+        # user-defined module azimuth
+        pv_azim = pv_params["azim"]
+    elif "tilt" in pv_params:
+        # default module azimuth
+        _, pv_azim = read_POA_params()
+        # user-defined module tilt
+        pv_tilt = pv_params["tilt"]
 
     # exclusion mask identifying locations where calculations are not done
-    # if no path is provided, no filtering is done
     if in_exclMask_path:
-        excl_mask = read_exclusMask(meta, in_exclMask_path)
-    else:
-        excl_mask = np.zeros(ref_shape[1:])
+        excl_mask = read_exclusMask(in_exclMask_path)
+    else:  # if no path is provided, no filtering is done
+        excl_mask = None
 
     return pv_tilt, pv_azim, excl_mask
 
 
 def read_POA_params(
-    meta: dict,
     pv_params: Optional[dict] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -91,8 +67,6 @@ def read_POA_params(
 
     Parameters
     ----------
-    meta: dict
-        Describes lat/lon borders of weather data.
     pv_params: Optional[dict]
         User-defined custom parameters. Default: None.
 
@@ -104,47 +78,30 @@ def read_POA_params(
         PV module azimuth.
 
     """
-    # checks if any default data is needed
-    check = 0
-    if pv_params:
-        # checks if pv_params is provided, if so copies dict keys
-        keys = list(pv_params.keys())
-
-        if "tilt" in keys:
-            pv_tilt = pv_params["tilt"]
-        if "azim" in keys:
-            pv_azim = pv_params["azim"]
-
-        if ("tilt" not in keys) | ("azim" not in keys):
-            check = 1
+    # checks if there is user-defined inputs
+    defaults_needed = []
+    if (pv_params is None) or ("tilt" not in pv_params):
+        defaults_needed.append("tilt")
     else:
-        check = 1
+        pv_tilt = pv_params["tilt"]
 
-    if check == 1:
+    if (pv_params is None) or ("azim" not in pv_params):
+        defaults_needed.append("azim")
+    else:
+        pv_azim = pv_params["azim"]
+
+    # if user does not specify parameters (i.e., use default)
+    if defaults_needed:
         script_dir = path.dirname(path.abspath(__file__))
         file_dir = path.split(script_dir)[0]
         file = "C3S_Lot1_PECD_PVprm_v6.nc"
 
-        keys = ["dummy"]
-
         with xr.open_dataset(path.join(file_dir, "anci", file)) as nc_data:
-            # compares borders of grids (if weather data is subset,
-            # exclusion mask needs to be subset)
-            a = nc_data["longitude"].values.min() - meta["vLon"].min()
-            b = nc_data["longitude"].values.max() - meta["vLon"].max()
-            c = nc_data["latitude"].values.min() - meta["vLat"].min()
-            d = nc_data["latitude"].values.max() - meta["vLat"].max()
-
-            if abs(a) + abs(b) + abs(c) + abs(d) > 0:
-                lon_slice = slice(meta["vLon"].min(), meta["vLon"].max())
-                lat_slice = slice(meta["vLat"].max(), meta["vLat"].min())
-                nc_data = nc_data.sel(longitude=lon_slice, latitude=lat_slice)
-
-            if "tilt" not in keys:
+            if "tilt" in defaults_needed:
                 # module tilt is assumed as 75% of optimal value for each pixel
                 pv_tilt = nc_data["OptTilt"].values.clip(0, 40) * 0.75
 
-            if "azim" not in keys:
+            if "azim" in defaults_needed:
                 # south for north hemisphere, north otherwise
                 pv_azim = nc_data["pv_azim"].values
 
@@ -152,7 +109,6 @@ def read_POA_params(
 
 
 def read_exclusMask(
-    meta: dict,
     in_exclMask_path: str,
     prm_excl: str = "PVmask",
 ) -> np.ndarray:
@@ -161,12 +117,10 @@ def read_exclusMask(
 
     Parameters
     ----------
-    meta: dict
-        Describes lat/lon borders of weather data.
     in_exclMask_path : str
         Path to exclusion mask .nc file.
     prm_excl: str
-        Exclusion mask parameter within .nc file. Default: prm_excl
+        Exclusion mask parameter within .nc file. Default: "PVmask"
 
     Returns
     -------
@@ -187,10 +141,6 @@ def read_exclusMask(
         in_exclMask_path = path.join(file_dir, "anci", file)
 
     with xr.open_dataset(in_exclMask_path) as nc_data:
-        lon_slice = slice(meta["vLon"].min(), meta["vLon"].max())
-        lat_slice = slice(meta["vLat"].max(), meta["vLat"].min())
-
-        nc_data = nc_data.sel(longitude=lon_slice, latitude=lat_slice)
         exclus_mask = nc_data[prm_excl].values
 
     return exclus_mask
@@ -270,7 +220,7 @@ def read_ssrd_and_meta(
 
 
 def read_t2m(
-    in_t2m_path,
+    in_t2m_path: str,
     prm_t2m: str = "t2m",
     t2m_unit: str = "K",
 ) -> np.ndarray:
@@ -279,11 +229,11 @@ def read_t2m(
 
     Parameters
     ----------
-    in_t2m_path : TYPE
+    in_t2m_path : str
         Path to t2m .nc file.
     prm_t2m : str, optional
         Parameter identifying 2 metre temperature field in .nc field.
-        The default is 't2m'.
+        Default: 't2m'.
     t2m_unit : str, optional
         Air temperature units. Default: 'K'.
 
@@ -293,7 +243,6 @@ def read_t2m(
         Air temperature 2-m height in K.
 
     """
-    print(in_t2m_path)
     with xr.open_dataset(in_t2m_path) as nc_data:
         t2m = nc_data[prm_t2m].values
 
