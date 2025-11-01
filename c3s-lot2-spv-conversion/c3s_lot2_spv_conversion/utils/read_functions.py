@@ -149,20 +149,16 @@ def set_thermal_coef(
     pv_type: str,
 ) -> float:
     """
-    Read module tilt and azimuth data, which define plane-of-array (POA).
+    Define Ross coeficient based on PV typology (i.e., type of mounting).
 
     Parameters
     ----------
     pv_type : Union[str,float]
         IDs PV typology being computed.
-    meta : dict
-        Describes lat/lon borders of weather data.
-    pv_params : Optional[dict], optional
-        DESCRIPTION. The default is None.
 
     Returns
     -------
-    th_coef: float
+    k: float
         PV thermal (Ross) coefficient.
 
     """
@@ -170,13 +166,13 @@ def set_thermal_coef(
     if "rooftop" in pv_type:  # includes both residential and industrial
         # rooftop, contiguous to surface (less convective cooling)
         # Skoplaki (2008). doi: 10.1016/j.solmat.2008.05.016
-        th_coef = 34  # 0.034 °C per W/m2
+        k = 34  # 0.034 °C per W/m2
     elif "utility" in pv_type:
         # free standing, room for air circulation (more convective cooling)
         # Skoplaki (2008). doi: 10.1016/j.solmat.2008.05.016
-        th_coef = 21  # 0.021 °C per W/m2
+        k = 21  # 0.021 °C per W/m2
 
-    return th_coef
+    return k
 
 
 def read_exclusMask(
