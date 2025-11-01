@@ -86,6 +86,8 @@ def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
         else:
             pv_azim_ix = pv_azim
     else:
+        # tracking case, tilt and azim are defined within regional-pv
+        # package, based on sun position and tracking setup
         pv_tilt_ix = None
         pv_azim_ix = None
 
@@ -130,7 +132,7 @@ def compute_spv(
         (in str format).
     in_ssrd_path: str
         Path to .nc file containing surface solar radiation downwelling.
-    in_t2m_path: list[str]
+    in_t2m_path: str
         Path to .nc file containing 2-m air temperature.
     in_excl_mask_path : str
         Path to exclusion mask .nc, filtering pixels in the calculations.

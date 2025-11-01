@@ -190,7 +190,7 @@ def read_exclusMask(
     in_exclMask_path : str
         Path to exclusion mask .nc file.
     prm_excl: str
-        Parameter identifying exclusion mask in nc file. Default: "PVmask"
+        Exclusion mask parameter within .nc file. Default: "PVmask"
 
     Returns
     -------
