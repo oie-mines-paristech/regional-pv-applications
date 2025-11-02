@@ -1,5 +1,5 @@
 from os import path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 from regional_pv.core import spv_workflow
@@ -24,12 +24,12 @@ n_p: int
 dt_or: int
 dt_ds: int
 print_prog: bool
-pv_tilt: Optional[np.ndarray]
-pv_azim: Optional[np.ndarray]
-th_coef: float
+pv_param: dict
 SSRD: np.ndarray
 T2M: np.ndarray
 meta: dict
+pv_tilt_ix: Union[int, float]
+pv_azim_ix: Union[int, float]
 
 
 def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
@@ -57,7 +57,7 @@ def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
     # boolean to print computed pixels
     global n_p, dt_or, dt_ds, print_prog
     # module tilt/azimuth & thermal coefficient
-    global pv_tilt, pv_azim, th_coef
+    global pv_param
     # Surface solar radiation downwelling, air temperature at 2-m, metadata
     global SSRD, T2M, meta
 
@@ -74,33 +74,34 @@ def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
     SSRD_ix = SSRD[:, index[0], index[1]].reshape(-1, 1)
     T2M_ix = T2M[:, index[0], index[1]].reshape(-1, 1)
 
-    if isinstance(pv_tilt, np.ndarray) and isinstance(pv_azim, np.ndarray):
-        if pv_tilt.ndim == 2:
-            pv_tilt_ix = pv_tilt[index[0], index[1]]
+    if isinstance(pv_param["tilt"], (int, float)):
+        pv_tilt_ix = pv_param["tilt"]
+    elif isinstance(pv_param["tilt"], np.ndarray):
+        if pv_param["tilt"].ndim == 2:
+            pv_tilt_ix = pv_param["tilt"][index[0], index[1]].item()
         else:
-            pv_tilt_ix = pv_tilt
-        if pv_azim.ndim == 2:
-            pv_azim_ix = pv_azim[index[0], index[1]]
+            pv_tilt_ix = pv_param["tilt"].item()
+
+    if isinstance(pv_param["azim"], (int, float)):
+        pv_azim_ix = pv_param["azim"]
+    elif isinstance(pv_param["azim"], np.ndarray):
+        if pv_param["azim"].ndim == 2:
+            pv_azim_ix = pv_param["azim"][index[0], index[1]].item()
         else:
-            pv_azim_ix = pv_azim
-    else:
-        # tracking case, tilt and azim are defined within regional-pv
-        # package, based on sun position and tracking setup
-        pv_tilt_ix = None
-        pv_azim_ix = None
+            pv_azim_ix = pv_param["azim"].item()
 
     # modelling chain to obtain photovoltaic capacity factors
     out = spv_workflow(
-        "Fixed",
-        SSRD_ix,
-        T2M_ix,
-        meta_ix,
-        pv_azim_ix,
-        pv_tilt_ix,
-        None,
-        th_coef,
-        dt_or,
-        dt_ds,
+        pv_type="Fixed",
+        ssrd=SSRD_ix,
+        t2m=T2M_ix,
+        meta=meta_ix,  # lat, lon, time
+        azim=pv_azim_ix,
+        tilt=pv_tilt_ix,
+        w_orient=None,
+        k=pv_param["th_coeff"],
+        dt_orig=dt_or,
+        dt_downscale=dt_ds,
     )
 
     return ix, index, out
@@ -164,7 +165,7 @@ def compute_spv(
     """
     # global variables
     global n_p, dt_or, dt_ds, print_prog
-    global pv_tilt, pv_azim, th_coef
+    global pv_param
     global SSRD, T2M, meta
 
     # checks if n_procs is > 0
@@ -197,12 +198,6 @@ def compute_spv(
     if pv_params:  # not None
         # checks for user defined inputs
         test_pv_params(pv_params)
-        th_coef = pv_params.get("thermal_coeff", 21)
-    else:
-        # Ross coefficient in °C per kW/m2
-        # Default value for free standing installations
-        # Skoplaki (2008). doi: 10.1016/j.solmat.2008.05.016
-        th_coef = 21
 
     if in_excl_mask_path == "default":
         import importlib.resources as pkg_resources
@@ -230,6 +225,18 @@ def compute_spv(
     if pv_params:
         # if non-single value, checks for same shape as climate data
         test_pv_params2(pv_params, SSRD.shape)
+
+        # if was not provided from the start, assume default values
+        if "tilt" not in pv_params:
+            pv_params["tilt"] = pv_tilt
+        if "azim" not in pv_params:
+            pv_params["azim"] = pv_azim
+    else:
+        # default values
+        pv_params = {"tilt": pv_tilt, "azim": pv_azim, "th_coeff": 21}
+
+    if isinstance(pv_params, dict):
+        pv_param = pv_params
 
     # ID indices where it is useful to calculate SPV, in 1d format
     # (i.e. skips nighttime period and excluded areas)

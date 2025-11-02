@@ -1,6 +1,6 @@
 import json
 from os import path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import xarray as xr
@@ -10,7 +10,11 @@ def read_support_inputs(
     ref_shape: tuple,
     in_exclMask_path: Optional[str] = "default",
     pv_params: Optional[dict] = None,
-) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
+) -> Tuple[
+    Union[float, int, np.ndarray],
+    Union[float, int, np.ndarray],
+    Optional[np.ndarray],
+]:
     """
     Read support inputs from auxiliary files.
 
@@ -25,9 +29,9 @@ def read_support_inputs(
 
     Returns
     -------
-    pv_tilt : np.ndarray
+    pv_tilt : Union[float, int, np.ndarray]
         PV module tilt.
-    pv_azim : np.ndarray
+    pv_azim : Union[float, int, np.ndarray]
         PV module azimuth.
     excl_mask : Optional[np.ndarray]
         Exclusion mask, IDing pixels to be ignored during calculations.
@@ -61,7 +65,7 @@ def read_support_inputs(
 
 def read_POA_params(
     pv_params: Optional[dict] = None,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[Union[int, float, np.ndarray], Union[int, float, np.ndarray]]:
     """
     Read module tilt and azimuth data, which define plane-of-array (POA).
 
@@ -72,9 +76,9 @@ def read_POA_params(
 
     Returns
     -------
-    pv_tilt : np.ndarray
+    pv_tilt : Union[float, int, np.ndarray]
         PV module tilt.
-    pv_azim : np.ndarray
+    pv_azim : Union[float, int, np.ndarray]
         PV module azimuth.
 
     """
