@@ -183,57 +183,55 @@ def test_pv_params(pv_params: dict) -> None:
     None
 
     """
-    check_tilt, check_azim = 0, 0
-    for param in pv_params.keys():
-        message = """
-        Only tilt, azim, and thermal_coeff are accepted as PV parameters.
-        {} is provided.
-        """.format(param)
-        assert param in ["tilt", "azim", "thermal_coeff"], message
+    # checks pv_param type
+    message = "If not None, pv_params must be dict."
+    assert isinstance(pv_params, dict), message
 
-        if param == "tilt":
-            check_tilt = 1
-            tilt = pv_params[param]
+    # checks keys
+    accepted_keys = ["tilt", "azim", "thermal_coeff"]
+    invalid_keys = pv_params.keys() - accepted_keys
 
-            message = "module tilt should be int, float, or np.ndarray."
-            assert isinstance(tilt, (int, float, np.ndarray)), message
+    if invalid_keys:
+        print(f"Only {accepted_keys} are accepted as PV parameters.")
+        print("Invalid keys found in pv_param:", invalid_keys)
 
-            message = "module tilt must be between 0 and 90."
-            assert np.all(tilt >= 0) & np.all(tilt <= 90), message
+    # checks module tilt
+    if "tilt" in pv_params:
+        tilt = pv_params["tilt"]
 
-            pv_params[param] = np.array(tilt)
+        message = "module tilt should be int, float, or np.ndarray."
+        assert isinstance(tilt, (int, float, np.ndarray)), message
 
-        elif param == "azim":
-            check_azim = 1
-            azim = pv_params[param]
+        message = "module tilt must be between 0 and 90 (degrees)."
+        assert np.all(tilt >= 0) & np.all(tilt <= 90), message
 
-            message = "module azimuth should be int, float, or np.ndarray."
-            assert isinstance(azim, (int, float, np.ndarray)), message
+    # checks module azimuth
+    if "azim" in pv_params:
+        azim = pv_params["azim"]
 
-            message = "module azim must be between 0 and 360."
-            assert np.all(azim >= 0) & np.all(azim <= 360), message
+        message = "module azimuth should be int, float, or np.ndarray."
+        assert isinstance(azim, (int, float, np.ndarray)), message
 
-            pv_params[param] = np.array(azim)
+        message = "module azim must be between 0 and 360 (degrees)."
+        assert np.all(azim >= 0) & np.all(azim <= 360), message
 
-        elif param == "thermal_coeff":
-            th_coef = pv_params[param]
-
-            message = "thermal coeff. should be int or float."
-            assert isinstance(th_coef, (int, float)), message
-
-            pv_params[param] = np.array(th_coef)
-
-            message = "thermal coefficient must be between 0 and 50 ºC/kW/m2."
-            assert (th_coef >= 0) & (th_coef <= 50), message
-
-        if check_tilt & check_azim:
-            if (pv_params["tilt"].size > 1) & (pv_params["azim"].size > 1):
+    if {"tilt", "azim"}.issubset(pv_params):
+        if isinstance(tilt, np.ndarray) & isinstance(azim, np.ndarray):
+            if (tilt.ndims > 1) & (tilt.azim > 1):
                 message = """
                 if both non-single values, tilt and azimuth need same shape.
                 """
-                assert pv_params["tilt"].shape == pv_params["azim"].shape, (
-                    message
-                )
+                assert tilt.shape == azim.shape, message
+
+    # checks Ross coefficient
+    if "th_coeff" in pv_params:
+        th_coeff = pv_params["th_coeff"]
+
+        message = "thermal coeff. should be int or float."
+        assert isinstance(th_coeff, (int, float)), message
+
+        message = "thermal coefficient must be between 0 and 80 °C/kW/m2."
+        assert (th_coeff >= 0) & (th_coeff <= 80), message
 
 
 def test_pv_params2(
@@ -241,7 +239,7 @@ def test_pv_params2(
     ref_shape: tuple,
 ) -> None:
     """
-    Asserts that pv_params have suitable shape.
+    Asserts that tilt and azim in pv_params have suitable shape.
 
     Parameters
     ----------
@@ -256,12 +254,8 @@ def test_pv_params2(
 
     """
     for param in ["tilt", "azim"]:
-        if param in pv_params:
-            # if more than 1D, arrays must match shape of
-            # weather input data.
-
-            if pv_params[param].size > 1:
-                message = """
-                if non-single valued, {} need same shape as weather inputs.
-                """.format(param)
-                assert pv_params[param].shape == ref_shape, message
+        if pv_params[param].size > 1:
+            message = """
+            if non-single valued, {} need same shape as weather inputs.
+            """.format(param)
+            assert pv_params[param].shape == ref_shape, message
