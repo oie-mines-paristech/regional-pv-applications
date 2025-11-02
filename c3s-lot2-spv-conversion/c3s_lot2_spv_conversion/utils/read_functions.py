@@ -7,7 +7,7 @@ import xarray as xr
 
 
 def read_support_inputs(
-    pv_type: str,
+    pv_typology: str,
     meta: dict,
     ref_shape: tuple,
     in_exclMask_path: Optional[str] = "default",
@@ -23,7 +23,7 @@ def read_support_inputs(
 
     Parameters
     ----------
-    pv_type: str
+    pv_typology: str
         IDs PV typology being computed.
     meta: dict
         Describes lat/lon borders of weather data.
@@ -45,8 +45,8 @@ def read_support_inputs(
     excl_mask : np.ndarray
         Exclusion mask, IDing pixels to be ignored during calculations.
     """
-    pv_tilt, pv_azim, w = read_POA_params(pv_type, meta)
-    k = set_thermal_coef(pv_type)
+    pv_tilt, pv_azim, w = read_POA_params(pv_typology, meta)
+    k = set_thermal_coef(pv_typology)
 
     # exclusion mask identifying locations where calculations are not done
     # if no path is provided, no filtering is done
@@ -59,7 +59,7 @@ def read_support_inputs(
 
 
 def read_POA_params(
-    pv_type: str,
+    pv_typology: str,
     meta: dict,
     pv_params: Optional[dict] = None,
 ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
@@ -68,7 +68,7 @@ def read_POA_params(
 
     Parameters
     ----------
-    pv_type : str
+    pv_typology : str
         IDs PV typology being computed.
     meta : dict
         Describes lat/lon borders of weather data.
@@ -87,22 +87,22 @@ def read_POA_params(
         Weights for combining multiple module orientations.
         None if single orientation or tracking typology.
     """
-    if pv_type != "utility_track_1axis":
+    if pv_typology != "utility_track_1axis":
         script_dir = path.dirname(path.abspath(__file__))
         file_dir = path.split(script_dir)[0]
         file = "C3S_PECD_PVprm_v4.nc"
         with xr.open_dataset(path.join(file_dir, "anci", file)) as nc_data:
-            if pv_type == "rooftop_residential":
+            if pv_typology == "rooftop_residential":
                 pv_azim = nc_data["pv_azim"][:].data
                 pv_tilt = nc_data["pv_ResiTilt"][:].data
                 w_orient = None
 
-            elif pv_type == "rooftop_industrial":
+            elif pv_typology == "rooftop_industrial":
                 pv_azim = np.array([180, 90, 270])
                 pv_tilt = np.array([10, 10, 10])
                 w_orient = np.array([0.5, 0.25, 0.25])
 
-            elif pv_type == "utility_fix":
+            elif pv_typology == "utility_fix":
                 pv_azim = nc_data["pv_azim"][:].data
                 pv_tilt = nc_data["pv_OptTilt"][:].data * 0.75
                 w_orient = None
@@ -115,14 +115,14 @@ def read_POA_params(
 
 
 def set_thermal_coef(
-    pv_type: str,
+    pv_typology: str,
 ) -> float:
     """
     Define Ross coeficient based on PV typology (i.e., type of mounting).
 
     Parameters
     ----------
-    pv_type : Union[str,float]
+    pv_typology : Union[str,float]
         IDs PV typology being computed.
 
     Returns
@@ -132,11 +132,11 @@ def set_thermal_coef(
 
     """
     # Ross coefficient in °C per kW/m2
-    if "rooftop" in pv_type:  # includes both residential and industrial
+    if "rooftop" in pv_typology:  # includes both residential and industrial
         # rooftop, contiguous to surface (less convective cooling)
         # Skoplaki (2008). doi: 10.1016/j.solmat.2008.05.016
         k = 34  # 0.034 °C per W/m2
-    elif "utility" in pv_type:
+    elif "utility" in pv_typology:
         # free standing, room for air circulation (more convective cooling)
         # Skoplaki (2008). doi: 10.1016/j.solmat.2008.05.016
         k = 21  # 0.021 °C per W/m2

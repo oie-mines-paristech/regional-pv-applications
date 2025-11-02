@@ -23,11 +23,11 @@ n_p: int
 dt_or: int
 dt_ds: int
 print_prog: bool
-pv_type: str
 pv_tilt: Optional[np.ndarray]
 pv_azim: Optional[np.ndarray]
 w_orient: Optional[np.ndarray]
 th_coef: float
+tracking: int
 SSRD: np.ndarray
 T2M: np.ndarray
 meta: dict
@@ -58,7 +58,7 @@ def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
     # boolean to print computed pixels
     global n_p, dt_or, dt_ds, print_prog
     # PV typology, module tilt and azimuth
-    global pv_type, pv_tilt, pv_azim, th_coef
+    global pv_tilt, pv_azim, th_coef, tracking
     # Surface solar radiation downwelling, air temperature at 2-m, metadata
     global SSRD, T2M, meta
 
@@ -92,7 +92,6 @@ def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
 
     # modelling chain to obtain photovoltaic capacity factors
     out = spv_workflow(
-        pv_type,
         SSRD_ix,
         T2M_ix,
         meta_ix,
@@ -100,6 +99,7 @@ def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
         pv_tilt_ix,
         w_orient,
         th_coef,
+        tracking,
         dt_or,
         dt_ds,
     )
@@ -126,7 +126,7 @@ def compute_spv(
 
     Parameters
     ----------
-    pv_type: str
+    pv_typology: str
         IDs PV typology being computed, either with full name or code
         (in str format).
     in_ssrd_path: str
@@ -166,7 +166,7 @@ def compute_spv(
     """
     # global variables
     global n_p, dt_or, dt_ds, print_prog
-    global pv_type, pv_tilt, pv_azim, w_orient, th_coef
+    global pv_type, pv_tilt, pv_azim, w_orient, th_coef, tracking
     global SSRD, T2M, meta
 
     # checks if n_procs is > 0
@@ -221,9 +221,14 @@ def compute_spv(
 
     # accepts the id, but internally the typology naming is used for clarity
     if pv_typology in mapping:
-        pv_type = mapping[pv_typology]
+        pv_typology = mapping[pv_typology]
     else:
-        pv_type = pv_typology
+        pv_typology = pv_typology
+
+    if "track_1axis" in pv_typology:
+        tracking = 1
+    else:
+        tracking = 0
 
     # reads weather data, namely ssrd and t2m
     # meta variables are extracted from ssrd (vLat,vLon,time)
@@ -232,7 +237,7 @@ def compute_spv(
     # read supporting data
     # pv_tilt and pv_azim are equal to values in pv_params if existing
     pv_tilt, pv_azim, w_orient, th_coef, excl_mask = read_support_inputs(
-        pv_type,
+        pv_typology,
         meta,
         SSRD.shape,
         in_excl_mask_path,
