@@ -14,8 +14,14 @@ package according to the PECD needs.
 
 ## Workflow for users
 
-Clone the repository and define `regional-pv-applications\c3s-lot2-spv-conversion`
-as your current directory.
+1. Clone the repository either through GitHub interface or through git running
+
+`git clone https://github.com/oie-mines-paristech/regional-pv-applications.git`
+
+2. In Anaconda, define `regional-pv-applications\c3s-lot2-spv-conversion` as your current
+   directory.
+
+1. Change git branch running `git checkout c3s_PECD4.2`
 
 For best experience create a new conda environment (e.g. `c3s-lot2-spv-conversion`)
 with Python 3.12:
@@ -24,15 +30,12 @@ with Python 3.12:
 conda create -n c3s-lot2-spv-conversion -c conda-forge python=3.12
 conda activate c3s-lot2-spv-conversion
 conda env update -f environment.yml
+pip install . --no-deps
 ```
 
 Then, within a Python script, import the package and run `interface`:
 
 ```python
-# path to c3s-lot2-spv-conversion folder
-repo_path = "..."  # to be completed by user
-sys.path.append(base_path)
-
 import c3s_lot2_spv_conversion
 
 # check `notebooks` folder for an actual example
