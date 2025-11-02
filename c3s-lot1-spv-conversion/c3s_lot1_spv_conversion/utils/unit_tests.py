@@ -188,7 +188,7 @@ def test_pv_params(pv_params: dict) -> None:
     assert isinstance(pv_params, dict), message
 
     # checks keys
-    accepted_keys = ["tilt", "azim", "thermal_coeff"]
+    accepted_keys = ["tilt", "azim", "tracking", "thermal_coeff"]
     invalid_keys = pv_params.keys() - accepted_keys
 
     if invalid_keys:
@@ -222,6 +222,16 @@ def test_pv_params(pv_params: dict) -> None:
                 if both non-single values, tilt and azimuth need same shape.
                 """
                 assert tilt.shape == azim.shape, message
+
+    # checks tracking
+    if "tracking" in pv_params:
+        track = pv_params["tracking"]
+
+        message = "tracking parameter must be int."
+        assert isinstance(track, int), message
+
+        message = "tracking must be either 0, 1, or 2."
+        assert np.all(azim >= 0) & np.all(azim <= 2), message
 
     # checks Ross coefficient
     if "th_coeff" in pv_params:

@@ -28,8 +28,8 @@ pv_param: dict
 SSRD: np.ndarray
 T2M: np.ndarray
 meta: dict
-pv_tilt_ix: Union[int, float]
-pv_azim_ix: Union[int, float]
+pv_tilt_ix: Optional[Union[int, float]]
+pv_azim_ix: Optional[Union[int, float]]
 
 
 def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
@@ -74,25 +74,28 @@ def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
     SSRD_ix = SSRD[:, index[0], index[1]].reshape(-1, 1)
     T2M_ix = T2M[:, index[0], index[1]].reshape(-1, 1)
 
-    if isinstance(pv_param["tilt"], (int, float)):
-        pv_tilt_ix = pv_param["tilt"]
-    elif isinstance(pv_param["tilt"], np.ndarray):
-        if pv_param["tilt"].ndim == 2:
-            pv_tilt_ix = pv_param["tilt"][index[0], index[1]].item()
-        else:
-            pv_tilt_ix = pv_param["tilt"].item()
+    if pv_param.get("tracking", 0) > 0:
+        pv_tilt_ix = None
+        pv_azim_ix = None
+    else:
+        if isinstance(pv_param["tilt"], (int, float)):
+            pv_tilt_ix = pv_param["tilt"]
+        elif isinstance(pv_param["tilt"], np.ndarray):
+            if pv_param["tilt"].ndim == 2:
+                pv_tilt_ix = pv_param["tilt"][index[0], index[1]].item()
+            else:
+                pv_tilt_ix = pv_param["tilt"].item()
 
-    if isinstance(pv_param["azim"], (int, float)):
-        pv_azim_ix = pv_param["azim"]
-    elif isinstance(pv_param["azim"], np.ndarray):
-        if pv_param["azim"].ndim == 2:
-            pv_azim_ix = pv_param["azim"][index[0], index[1]].item()
-        else:
-            pv_azim_ix = pv_param["azim"].item()
+        if isinstance(pv_param["azim"], (int, float)):
+            pv_azim_ix = pv_param["azim"]
+        elif isinstance(pv_param["azim"], np.ndarray):
+            if pv_param["azim"].ndim == 2:
+                pv_azim_ix = pv_param["azim"][index[0], index[1]].item()
+            else:
+                pv_azim_ix = pv_param["azim"].item()
 
     # modelling chain to obtain photovoltaic capacity factors
     out = spv_workflow(
-        pv_type="Fixed",
         ssrd=SSRD_ix,
         t2m=T2M_ix,
         meta=meta_ix,  # lat, lon, time
@@ -100,6 +103,7 @@ def spv_calcs(ix: int) -> Tuple[int, tuple, np.ndarray]:
         tilt=pv_tilt_ix,
         w_orient=None,
         k=pv_param["th_coeff"],
+        tracking=pv_param["tracking"],
         dt_orig=dt_or,
         dt_downscale=dt_ds,
     )
@@ -233,7 +237,12 @@ def compute_spv(
             pv_params["azim"] = pv_azim
     else:
         # default values
-        pv_params = {"tilt": pv_tilt, "azim": pv_azim, "th_coeff": 21}
+        pv_params = {
+            "tilt": pv_tilt,
+            "azim": pv_azim,
+            "tracking": 0,
+            "th_coeff": 21,
+        }
 
     if isinstance(pv_params, dict):
         pv_param = pv_params

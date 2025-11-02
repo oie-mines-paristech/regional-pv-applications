@@ -11,8 +11,8 @@ def read_support_inputs(
     in_exclMask_path: Optional[str] = "default",
     pv_params: Optional[dict] = None,
 ) -> Tuple[
-    Union[float, int, np.ndarray],
-    Union[float, int, np.ndarray],
+    Optional[Union[float, int, np.ndarray]],
+    Optional[Union[float, int, np.ndarray]],
     Optional[np.ndarray],
 ]:
     """
@@ -37,22 +37,32 @@ def read_support_inputs(
         Exclusion mask, IDing pixels to be ignored during calculations.
         None corresponds to assuming all pixels.
     """
-    # if neither module tilt nor azimuth are user-defined
-    if (pv_params is None) or (not {"tilt", "azim"}.issubset(pv_params)):
+    if pv_params and pv_params.get("tracking", 0) > 0:
+        # tracking is user-defined
+        pv_tilt = None
+        pv_azim = None
+    elif isinstance(pv_params, dict):
+        # checks if module tilt anda azimuth are provided by user
+        has_tilt = "tilt" in pv_params
+        has_azim = "azim" in pv_params
+
+        if has_tilt and has_azim:
+            pv_tilt = pv_params["tilt"]
+            pv_azim = pv_params["azim"]
+        elif has_azim:
+            # fetches default tilt
+            pv_tilt, _ = read_POA_params()
+            pv_azim = pv_params["azim"]
+        elif has_tilt:
+            # fetches default azim
+            _, pv_azim = read_POA_params()
+            pv_tilt = pv_params["tilt"]
+        else:
+            # fetches default tilt and azim
+            pv_tilt, pv_azim = read_POA_params()
+    else:
+        # fetches default tilt and azim
         pv_tilt, pv_azim = read_POA_params()
-    elif {"tilt", "azim"}.issubset(pv_params):  # if both are provided
-        pv_tilt = pv_params["tilt"]
-        pv_azim = pv_params["azim"]
-    elif "azim" in pv_params:
-        # default module tilt
-        pv_tilt, _ = read_POA_params()
-        # user-defined module azimuth
-        pv_azim = pv_params["azim"]
-    elif "tilt" in pv_params:
-        # default module azimuth
-        _, pv_azim = read_POA_params()
-        # user-defined module tilt
-        pv_tilt = pv_params["tilt"]
 
     # exclusion mask identifying locations where calculations are not done
     if in_exclMask_path:
