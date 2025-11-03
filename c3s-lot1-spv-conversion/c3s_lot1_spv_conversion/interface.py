@@ -249,11 +249,11 @@ def compute_spv(
 
     # ID indices where it is useful to calculate SPV, in 1d format
     # (i.e. skips nighttime period and excluded areas)
-    if excl_mask:  # if an exclusion mask is provided
+    if isinstance(excl_mask, np.ndarray):  # if an exclusion mask is provided
         ok_index = (excl_mask == 0) & (SSRD.sum(axis=0) > 0)
     else:
         ok_index = SSRD.sum(axis=0) > 0
-    ok_index = np.ravel_multi_index(np.where(ok_index), SSRD.shape)
+    ok_index = np.ravel_multi_index(np.where(ok_index), SSRD.shape[1:])
 
     # array where to store spv output
     out_all = np.zeros_like(SSRD)
