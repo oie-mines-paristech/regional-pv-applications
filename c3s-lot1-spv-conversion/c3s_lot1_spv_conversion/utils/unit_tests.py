@@ -1,5 +1,5 @@
 from os import path
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
@@ -130,14 +130,15 @@ def test_for_nans(var: np.ndarray, var_name: str) -> None:
     assert np.isnan(var).sum() == 0, message
 
 
-def test_downscaling_rate(dt_orig: int, dt_downscale: int) -> None:
+def test_downscaling_rate(dt_orig: Union[int, dict], dt_downscale: int) -> None:
     """
     Asserts that intended downscaling is proportional to original time data.
 
     Parameters
     ----------
-    dt_orig : int
-        Original time resolution, in minutes.
+    dt_orig : Union[int,dict]
+        Original time resolution, in minutes. Dict when ssrd and t2m have
+        different values.
     dt_downscale : int
         Time resolution for which data is downscaled to, in minutes.
 
@@ -146,8 +147,13 @@ def test_downscaling_rate(dt_orig: int, dt_downscale: int) -> None:
     None
 
     """
-    message = "dt_orig and dt_downscale are not evenly divisible."
-    assert dt_orig % dt_downscale == 0, message
+    if isinstance(dt_orig, int):
+        message = "dt_orig and dt_downscale are not evenly divisible."
+        assert dt_orig % dt_downscale == 0, message
+    elif isinstance(dt_orig, dict):
+        message = "dt_orig and dt_downscale are not evenly divisible."
+        assert dt_orig["ssrd"] % dt_downscale == 0, message
+        assert dt_orig["t2m"] % dt_downscale == 0, message
 
 
 def test_n_processes(n_procs: int) -> None:

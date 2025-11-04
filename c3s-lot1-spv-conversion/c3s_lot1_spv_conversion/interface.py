@@ -21,7 +21,7 @@ from c3s_lot1_spv_conversion.utils.unit_tests import (
 
 # declaring global variables for mypy checking
 n_p: int
-dt_or: int
+dt_or: Union[int, dict]
 dt_ds: int
 print_prog: bool
 pv_param: dict
@@ -116,7 +116,7 @@ def compute_spv(
     in_t2m_path: str,
     in_excl_mask_path: Optional[str],
     DataStream: str,
-    dt_orig: int = 60,
+    dt_orig: Union[int, dict] = 60,
     dt_downscale: int = 15,
     pv_params: Optional[dict] = None,
     print_progress: bool = False,
@@ -138,8 +138,9 @@ def compute_spv(
         Path to exclusion mask .nc, filtering pixels in the calculations.
     DataStream: str
         IDs data as historical (HIST), projection (PROJ), seasonal (SEAS).
-    dt_orig: int, optional
-        Data's original time resolution, in minutes. Default: 60.
+    dt_orig: Union[int,dict], optional
+        Data's original time resolution, in minutes. Dictionary if different
+        values for ssrd and t2m. Default: 60.
     dt_downscale: int, optional
         Time resolution to which data is downscaled, in minutes, to better
             account for variation in angle of incidence (then, reaggregated
@@ -226,6 +227,24 @@ def compute_spv(
         SSRD.shape, in_excl_mask_path, pv_params
     )
 
+    # if seasonal, adjust default tilt and azim from 0.25 to 1deg resolution
+    if DataStream == "SEAS":
+        if not pv_params or "tilt" not in pv_params:
+            if isinstance(pv_tilt, np.ndarray):
+                dims = pv_tilt[1:, :].shape
+                pv_tilt = (
+                    pv_tilt[1:, :]
+                    .reshape(dims[0] // 4, 4, dims[1] // 4, 4)
+                    .mean(axis=(1, 3))
+                )
+            if isinstance(pv_azim, np.ndarray):
+                dims = pv_azim[1:, :].shape
+                pv_azim = (
+                    pv_azim[1:, :]
+                    .reshape(dims[0] // 4, 4, dims[1] // 4, 4)
+                    .mean(axis=(1, 3))
+                )
+
     if pv_params:
         # if non-single value, checks for same shape as climate data
         test_pv_params2(pv_params, SSRD.shape)
@@ -256,7 +275,19 @@ def compute_spv(
     ok_index = np.ravel_multi_index(np.where(ok_index), SSRD.shape[1:])
 
     # array where to store spv output
-    out_all = np.zeros_like(SSRD)
+    # if data is daily or coarser
+    if isinstance(dt_orig, dict) and dt_orig["ssrd"] >= 24 * 60:
+        # adjust for different final resolution (hourly)
+        time_f = dt_orig["ssrd"] // 60
+        out_all = np.zeros((SSRD.shape[0] * time_f, *SSRD.shape[1:]))
+
+        # create hourly timestamps for final output
+        hour_offsets = np.arange(time_f).astype("timedelta64[h]")
+        meta["time2"] = (meta["time"][:, None] + hour_offsets).flatten()
+    else:
+        out_all = np.zeros_like(SSRD)
+        meta["time2"] = meta["time"]
+
     if n_procs == 1:
         for ix in ok_index.tolist():
             # first output is ix, only needed in parallel computation
