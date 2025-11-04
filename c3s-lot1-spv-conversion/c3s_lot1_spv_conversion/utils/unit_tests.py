@@ -130,7 +130,9 @@ def test_for_nans(var: np.ndarray, var_name: str) -> None:
     assert np.isnan(var).sum() == 0, message
 
 
-def test_downscaling_rate(dt_orig: Union[int, dict], dt_downscale: int) -> None:
+def test_downscaling_rate(
+    dt_orig: Optional[Union[int, dict]], dt_downscale: int
+) -> None:
     """
     Asserts that intended downscaling is proportional to original time data.
 

@@ -116,7 +116,7 @@ def compute_spv(
     in_t2m_path: str,
     in_excl_mask_path: Optional[str],
     DataStream: str,
-    dt_orig: Union[int, dict] = 60,
+    dt_orig: Optional[Union[int, dict]] = None,
     dt_downscale: int = 15,
     pv_params: Optional[dict] = None,
     print_progress: bool = False,
@@ -196,9 +196,18 @@ def compute_spv(
 
     # needs this renaming since a parameter cannot be a global variable
     n_p = n_procs
-    dt_or = dt_orig
     dt_ds = dt_downscale
     print_prog = print_progress
+
+    if dt_orig:  # if not None
+        # user-defined
+        dt_or = dt_orig
+    else:
+        # default values
+        if DataStream != "SEAS":
+            dt_or = 60
+        else:
+            dt_or = {"ssrd": 24 * 60, "t2m": 6 * 60}
 
     if pv_params:  # not None
         # checks for user defined inputs
