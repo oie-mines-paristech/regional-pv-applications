@@ -285,9 +285,9 @@ def compute_spv(
 
     # array where to store spv output
     # if data is daily or coarser
-    if isinstance(dt_orig, dict) and dt_orig["ssrd"] >= 24 * 60:
+    if isinstance(dt_or, dict) and dt_or["ssrd"] >= 24 * 60:
         # adjust for different final resolution (hourly)
-        time_f = dt_orig["ssrd"] // 60
+        time_f = dt_or["ssrd"] // 60
         out_all = np.zeros((SSRD.shape[0] * time_f, *SSRD.shape[1:]))
 
         # create hourly timestamps for final output
@@ -341,7 +341,7 @@ def compute_spv(
                 out_all,
                 meta["vLon"],
                 meta["vLat"],
-                meta["time"],
+                meta["time2"],
             )
 
     return out_all, XX, YY
