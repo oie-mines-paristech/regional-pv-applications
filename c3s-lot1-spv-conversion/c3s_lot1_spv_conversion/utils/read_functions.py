@@ -185,9 +185,11 @@ def read_weather_inputs(
     """
     # read solar radiation data and metadata
     ssrd, meta = read_ssrd_and_meta(in_ssrd_path)
+    ssrd = ssrd.astype("float32")
 
     # read air temperature at 2-meter height
     t2m = read_t2m(in_t2m_path)
+    t2m = t2m.astype("float32")
 
     return ssrd, t2m, meta
 
