@@ -217,8 +217,23 @@ def read_ssrd_and_meta(
 
     """
     with xr.open_dataset(in_ssrd_path) as nc_data:
-        ssrd = nc_data[prm_ssrd].values
-        # TODO: include check on root_grp[prm_ssrd].units
+        # TODO: include check on units
+
+        # read netCDF chunk-wise to ensure controlled RAM-usage
+        # file is natively chunked along the 1st dimension (time)
+        # following this is more efficient
+        temp = nc_data.variables[prm_ssrd]
+        chunk_size = 15  # number of timesteps read per chunk
+        shape = temp.shape
+
+        i = 0
+        end = min(i + chunk_size, shape[0])
+        ssrd = np.empty(shape, dtype=temp.dtype)
+
+        # reads [chunk_size, 721, 1440]
+        for i in range(0, shape[0], chunk_size):
+            end = min(i + chunk_size, shape[0])
+            ssrd[i:end] = temp[i:end].values
 
         meta = {}
         meta["vLon"] = nc_data["longitude"].values
@@ -258,7 +273,22 @@ def read_t2m(
 
     """
     with xr.open_dataset(in_t2m_path) as nc_data:
-        t2m = nc_data[prm_t2m].values
+        # read netCDF chunk-wise to ensure controlled RAM-usage
+        # file is natively chunked along the 1st dimension (time)
+        # following this is more efficient
+        temp = nc_data.variables[prm_t2m]
+        chunk_size = 15  # number of timesteps read per chunk
+        shape = temp.shape
+
+        i = 0
+        end = min(i + chunk_size, shape[0])
+
+        t2m = np.empty(shape, dtype=temp.dtype)
+
+        # reads [chunk_size, 721, 1440]
+        for i in range(0, shape[0], chunk_size):
+            end = min(i + chunk_size, shape[0])
+            t2m[i:end] = temp[i:end].values
 
     if t2m_unit == "K":
         # convert Kelvin to Celsius
