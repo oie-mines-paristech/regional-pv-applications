@@ -288,6 +288,7 @@ def compute_spv(
     # meshgrid, can be useful for plotting
     XX, YY = np.meshgrid(meta["vLon"], meta["vLat"])
 
+    del (SSRD, T2M)
     if to_save:
         if isinstance(out_path, str):
             # creates and encodes output .nc file
